@@ -17,7 +17,7 @@ public class Logger extends AbstractTableModel {
     };
 
     private final List<LogEntry> entries = new ArrayList<>();
-    private LogLevel logLevel = LogLevel.FULL;
+    private LogLevel logLevel = LogLevel.DEBUG;
 
     // Default 100MB
     private long maxSizeBytes = 100L * 1024 * 1024;
@@ -137,11 +137,11 @@ public class Logger extends AbstractTableModel {
     }
 
     public synchronized void logFullJson(String origin, String path, Map<String, String> paramValueMap) {
-        if (logLevel != LogLevel.FULL) {
+        if (logLevel != LogLevel.DEBUG) {
             return;
         }
         String json = toJson(paramValueMap);
-        log(LogLevel.FULL, origin, path, json);
+        log(LogLevel.DEBUG, origin, path, json);
     }
 
     public synchronized void logInfoJson(String origin, String path, Map<String, String> changedParamValueMap) {

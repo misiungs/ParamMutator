@@ -24,6 +24,8 @@ public final class CodecUtil {
                     case URL_DECODE -> urlDecode(v);
                     case BASE64_DECODE -> base64Decode(v);
                     case UNICODE_DECODE -> unicodeDecode(v);
+                    case UPPERCASE -> v.toUpperCase();
+                    case LOWERCASE -> v.toLowerCase();
                     default -> v;
                 };
             } catch (Exception ignored) {
@@ -44,6 +46,8 @@ public final class CodecUtil {
                     case URL_ENCODE -> urlEncode(v);
                     case BASE64_ENCODE -> base64Encode(v);
                     case UNICODE_ENCODE -> unicodeEncode(v);
+                    case UPPERCASE -> v.toUpperCase();
+                    case LOWERCASE -> v.toLowerCase();
                     default -> v;
                 };
             } catch (Exception ignored) {

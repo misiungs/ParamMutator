@@ -87,7 +87,7 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                     transformed = CodecUtil.applyEncodeChain(mutatedValue, rule.getEncodeChain());
                     mutated = true;
                 } catch (Exception ex) {
-                    logger.log(LogLevel.FULL, origin, reqPath,
+                    logger.log(LogLevel.DEBUG, origin, reqPath,
                             "Exception mutating param " + name + ": " + ex);
                 }
             }
@@ -102,12 +102,9 @@ public class ParamMutatorHttpHandler implements HttpHandler {
             }
         }
 
-        // Logging behavior
-        // FULL: log all parameters
-        if (logger.getLogLevel() == LogLevel.FULL) {
+        if (logger.getLogLevel() == LogLevel.DEBUG) {
             logger.logFullJson(origin, reqPath, allParamValues);
         } else if (logger.getLogLevel() == LogLevel.INFO) {
-            // INFO: log only mutated params; if none mutated, nothing logged
             logger.logInfoJson(origin, reqPath, changedParamValues);
         }
 

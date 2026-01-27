@@ -1,6 +1,6 @@
 package burp.parammutator.log;
 
 public enum LogLevel {
-    FULL,
+    DEBUG,
     INFO
 }

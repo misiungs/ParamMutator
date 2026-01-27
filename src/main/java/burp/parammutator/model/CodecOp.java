@@ -7,6 +7,7 @@ public enum CodecOp {
     UNICODE_DECODE,
     URL_ENCODE,
     BASE64_ENCODE,
-    UNICODE_ENCODE
+    UNICODE_ENCODE,
+    UPPERCASE,
+    LOWERCASE
 }
-
