@@ -6,7 +6,19 @@ import java.util.regex.Pattern;
 public final class ParamMutatorRule {
 
     private String pattern;
-    private boolean regex;
+
+    // OLD:
+    // private boolean regex;
+    //
+    // NEW: replace boolean regex with a type enum
+    public enum ParamPatternType {
+        NORMAL,
+        REGEX,
+        USER_DEF
+    }
+
+    private ParamPatternType paramType;
+
     private boolean pathEnabled;
     private String pathPattern;
     private boolean pathRegex;
@@ -21,46 +33,69 @@ public final class ParamMutatorRule {
     private transient Pattern compiledPathPattern;
 
     public ParamMutatorRule() {
-        // .
+        // default
     }
+
+    // convenience ctor for existing usage – treat regex flag as NORMAL/REGEX
     public ParamMutatorRule(String pattern,
-                           boolean regex,
-                           RandomType type,
-                           Position position,
-                           int length,
-                           List<CodecOp> decodeChain,
-                           List<CodecOp> encodeChain) {
-        this(pattern, regex, MutationMode.RANDOM, type, position, length, null, decodeChain, encodeChain,
-                false, "", false);
+                            boolean regex,
+                            RandomType type,
+                            Position position,
+                            int length,
+                            List<CodecOp> decodeChain,
+                            List<CodecOp> encodeChain) {
+        this(pattern,
+                regex ? ParamPatternType.REGEX : ParamPatternType.NORMAL,
+                MutationMode.RANDOM,
+                type,
+                position,
+                length,
+                null,
+                decodeChain,
+                encodeChain,
+                false,
+                "",
+                false);
     }
 
     public ParamMutatorRule(String pattern,
-                           boolean regex,
-                           MutationMode mutationMode,
-                           RandomType type,
-                           Position position,
-                           int length,
-                           String text,
-                           List<CodecOp> decodeChain,
-                           List<CodecOp> encodeChain) {
-        this(pattern, regex, mutationMode, type, position, length, text, decodeChain, encodeChain,
-                false, "", false);
+                            boolean regex,
+                            MutationMode mutationMode,
+                            RandomType type,
+                            Position position,
+                            int length,
+                            String text,
+                            List<CodecOp> decodeChain,
+                            List<CodecOp> encodeChain) {
+        this(pattern,
+                regex ? ParamPatternType.REGEX : ParamPatternType.NORMAL,
+                mutationMode,
+                type,
+                position,
+                length,
+                text,
+                decodeChain,
+                encodeChain,
+                false,
+                "",
+                false);
     }
 
+    // NEW canonical ctor using ParamPatternType
     public ParamMutatorRule(String pattern,
-                           boolean regex,
-                           MutationMode mutationMode,
-                           RandomType type,
-                           Position position,
-                           int length,
-                           String text,
-                           List<CodecOp> decodeChain,
-                           List<CodecOp> encodeChain,
-                           boolean pathEnabled,
-                           String pathPattern,
-                           boolean pathRegex) {
+                            ParamPatternType paramType,
+                            MutationMode mutationMode,
+                            RandomType type,
+                            Position position,
+                            int length,
+                            String text,
+                            List<CodecOp> decodeChain,
+                            List<CodecOp> encodeChain,
+                            boolean pathEnabled,
+                            String pathPattern,
+                            boolean pathRegex) {
         this.pattern = pattern;
-        this.regex = regex;
+        this.paramType = paramType == null ? ParamPatternType.NORMAL : paramType;
 
         this.mutationMode = mutationMode == null ? MutationMode.RANDOM : mutationMode;
         this.type = type;
@@ -79,8 +114,9 @@ public final class ParamMutatorRule {
         compilePathPattern();
     }
 
-    public void compilePattern() {
-        if (regex && pattern != null && !pattern.isEmpty()) {
+    // helper used by legacy constructors
+    private void compilePattern() {
+        if (paramType == ParamPatternType.REGEX && pattern != null && !pattern.isEmpty()) {
             compiledPattern = Pattern.compile(pattern);
         } else {
             compiledPattern = null;
@@ -96,13 +132,22 @@ public final class ParamMutatorRule {
     }
 
     public boolean matches(String paramName) {
-        if (regex) {
-            if (compiledPattern == null) {
-                compilePattern();
+        String name = paramName == null ? "" : paramName;
+        String pat = pattern == null ? "" : pattern;
+
+        return switch (paramType) {
+            case REGEX -> {
+                if (compiledPattern == null && !pat.isEmpty()) {
+                    compilePattern();
+                }
+                yield compiledPattern != null && compiledPattern.matcher(name).matches();
             }
-            return compiledPattern != null && compiledPattern.matcher(paramName).matches();
-        }
-        return paramName.equals(paramName == null ? "" : pattern);
+            case NORMAL -> name.equals(pat);
+            case USER_DEF -> {
+                // USER_DEF rules are matched by placeholder replacement, not by parameter list
+                yield false;
+            }
+        };
     }
 
     public boolean matchesPath(String requestPath) {
@@ -131,8 +176,19 @@ public final class ParamMutatorRule {
         return pattern;
     }
 
+    // NEW getter / setter
+    public ParamPatternType getParamType() {
+        return paramType == null ? ParamPatternType.NORMAL : paramType;
+    }
+
+    public void setParamType(ParamPatternType paramType) {
+        this.paramType = paramType == null ? ParamPatternType.NORMAL : paramType;
+        compilePattern();
+    }
+
+    // legacy compatibility for UI/table code that still calls isRegex()
     public boolean isRegex() {
-        return regex;
+        return getParamType() == ParamPatternType.REGEX;
     }
 
     public MutationMode getMutationMode() {

@@ -25,7 +25,7 @@ public class ParamMutatorConfigPanel extends JPanel {
     }
 
     private final JCheckBox enabledCheck = new JCheckBox("Enable Param Mutator", false);
-    
+
     private final RuleTableModel model = new RuleTableModel(MAX_RULES);
     private final JTable table = new JTable(model) {
         @Override
@@ -39,7 +39,7 @@ public class ParamMutatorConfigPanel extends JPanel {
 
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         topPanel.add(enabledCheck);
-       
+
         topPanel.add(new JLabel("Number of rules:"));
         JSpinner ruleCountSpinner = new JSpinner(new SpinnerNumberModel(15, 1, MAX_RULES, 1));
         topPanel.add(ruleCountSpinner);
@@ -71,7 +71,7 @@ public class ParamMutatorConfigPanel extends JPanel {
 
                 ParamMutatorRule rule = new ParamMutatorRule(
                         pat,
-                        row.paramRegex,
+                        row.paramType,
                         row.mode,
                         row.randType,
                         row.position,
@@ -92,29 +92,21 @@ public class ParamMutatorConfigPanel extends JPanel {
 
         add(topPanel, BorderLayout.NORTH);
 
-        // JTable configuration
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setRowHeight(24);
 
-        // Editors/Renderers + column widths
         installEditorsAndRenderers(table);
 
-        // Put table into scrollpane FIRST (so header is installed into the column header viewport)
         JScrollPane sp = new JScrollPane(table);
         add(sp, BorderLayout.CENTER);
 
-        // Now install ColumnGroups onto the (custom) header.
-        // If this is not called, columnGroups stays null and nothing is painted.
         GroupableTableHeader gh = (GroupableTableHeader) table.getTableHeader();
         setupGroupedHeader(gh);
-
-        // Ensure the scrollpane is using this header instance as the column header view
         sp.setColumnHeaderView(gh);
 
         gh.revalidate();
         gh.repaint();
 
-        // Keep path/text/len visibility-ish logic by enabling/disabling editors via model
         model.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE) {
                 table.repaint();
@@ -130,11 +122,9 @@ public class ParamMutatorConfigPanel extends JPanel {
     public void addNotify() {
         super.addNotify();
 
-        // Re-apply custom UI after Burp/LAF has finalized component UIs
         JTableHeader th = table.getTableHeader();
 
         if (!(th instanceof GroupableTableHeader)) {
-            // Force our header instance (in case something replaced it)
             GroupableTableHeader gh = new GroupableTableHeader(table.getColumnModel());
             table.setTableHeader(gh);
             th = gh;
@@ -142,17 +132,13 @@ public class ParamMutatorConfigPanel extends JPanel {
 
         GroupableTableHeader gh = (GroupableTableHeader) th;
 
-        // Critical: re-set our UI delegate (updateUI/LAF changes may overwrite it)
         gh.setUI(new GroupableTableHeaderUI());
 
-        // Ensure groups are present (avoid duplicates)
-        // Simplest approach: create a fresh header + re-add groups.
         GroupableTableHeader rebuilt = new GroupableTableHeader(table.getColumnModel());
         rebuilt.setUI(new GroupableTableHeaderUI());
         setupGroupedHeader(rebuilt);
         table.setTableHeader(rebuilt);
 
-        // Make sure the scrollpane is using the table header we just set
         Container p = SwingUtilities.getAncestorOfClass(JScrollPane.class, table);
         if (p instanceof JScrollPane scroll) {
             scroll.setColumnHeaderView(rebuilt);
@@ -166,14 +152,15 @@ public class ParamMutatorConfigPanel extends JPanel {
 
     private enum Col {
         PARAM_PATTERN("Parameter", String.class),
-        PARAM_REGEX("Is regex?", Boolean.class),
+        // changed from Boolean "Is regex?" to enum Type
+        PARAM_TYPE("Type", ParamMutatorRule.ParamPatternType.class),
 
         PATH_ENABLED("On?", Boolean.class),
         PATH_PATTERN("Path", String.class),
         PATH_REGEX("Is regex?", Boolean.class),
 
         MODE("Mode", MutationMode.class),
-        TYPE("Type", RandomType.class),
+        TYPE("Random type", RandomType.class),
         TEXT("Text", String.class),
         POS("Pos", Position.class),
         LEN("Len", Integer.class),
@@ -200,10 +187,12 @@ public class ParamMutatorConfigPanel extends JPanel {
     private static void installEditorsAndRenderers(JTable table) {
         TableColumnModel cm = table.getColumnModel();
 
-        // Default editors
         cm.getColumn(Col.MODE.ordinal()).setCellEditor(new DefaultCellEditor(new JComboBox<>(MutationMode.values())));
         cm.getColumn(Col.TYPE.ordinal()).setCellEditor(new DefaultCellEditor(new JComboBox<>(RandomType.values())));
         cm.getColumn(Col.POS.ordinal()).setCellEditor(new DefaultCellEditor(new JComboBox<>(Position.values())));
+        cm.getColumn(Col.PARAM_TYPE.ordinal()).setCellEditor(
+                new DefaultCellEditor(new JComboBox<>(ParamMutatorRule.ParamPatternType.values()))
+        );
 
         CodecOp[] decodeOps = {
                 CodecOp.NO_OP,
@@ -232,19 +221,17 @@ public class ParamMutatorConfigPanel extends JPanel {
         cm.getColumn(Col.ENC3.ordinal()).setCellEditor(new DefaultCellEditor(new JComboBox<>(encodeOps)));
         cm.getColumn(Col.ENC4.ordinal()).setCellEditor(new DefaultCellEditor(new JComboBox<>(encodeOps)));
 
-        // LEN uses integer editor
         cm.getColumn(Col.LEN.ordinal()).setCellEditor(new IntegerCellEditor(1, 9999));
 
-        // Column widths (tweak as needed)
         setWidth(cm.getColumn(Col.PARAM_PATTERN.ordinal()), 180);
-        setWidth(cm.getColumn(Col.PARAM_REGEX.ordinal()), 55);
+        setWidth(cm.getColumn(Col.PARAM_TYPE.ordinal()), 80);
 
         setWidth(cm.getColumn(Col.PATH_ENABLED.ordinal()), 55);
         setWidth(cm.getColumn(Col.PATH_PATTERN.ordinal()), 220);
         setWidth(cm.getColumn(Col.PATH_REGEX.ordinal()), 55);
 
         setWidth(cm.getColumn(Col.MODE.ordinal()), 90);
-        setWidth(cm.getColumn(Col.TYPE.ordinal()), 90);
+        setWidth(cm.getColumn(Col.TYPE.ordinal()), 100);
         setWidth(cm.getColumn(Col.TEXT.ordinal()), 160);
         setWidth(cm.getColumn(Col.POS.ordinal()), 70);
         setWidth(cm.getColumn(Col.LEN.ordinal()), 60);
@@ -253,7 +240,6 @@ public class ParamMutatorConfigPanel extends JPanel {
             setWidth(cm.getColumn(i), 90);
         }
 
-        // Renderer that grays out cells based on rules (mode/pathEnabled/UUID length)
         table.setDefaultRenderer(Object.class, new RuleAwareRenderer());
         table.setDefaultRenderer(Integer.class, new RuleAwareRenderer());
         table.setDefaultRenderer(Boolean.class, new RuleAwareRenderer());
@@ -261,6 +247,7 @@ public class ParamMutatorConfigPanel extends JPanel {
         table.setDefaultRenderer(RandomType.class, new RuleAwareRenderer());
         table.setDefaultRenderer(Position.class, new RuleAwareRenderer());
         table.setDefaultRenderer(CodecOp.class, new RuleAwareRenderer());
+        table.setDefaultRenderer(ParamMutatorRule.ParamPatternType.class, new RuleAwareRenderer());
     }
 
     private static void setWidth(TableColumn c, int w) {
@@ -272,7 +259,6 @@ public class ParamMutatorConfigPanel extends JPanel {
     private static void setupGroupedHeader(GroupableTableHeader header) {
         TableColumnModel cm = header.getColumnModel();
 
-        // Renderer for group header cells (centered, opaque, with standard header border)
         TableCellRenderer groupRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
@@ -299,7 +285,7 @@ public class ParamMutatorConfigPanel extends JPanel {
         ColumnGroup gParam = new ColumnGroup("PARAMETER");
         gParam.setHeaderRenderer(groupRenderer);
         gParam.add(cm.getColumn(Col.PARAM_PATTERN.ordinal()));
-        gParam.add(cm.getColumn(Col.PARAM_REGEX.ordinal()));
+        gParam.add(cm.getColumn(Col.PARAM_TYPE.ordinal()));
 
         ColumnGroup gPath = new ColumnGroup("PATH");
         gPath.setHeaderRenderer(groupRenderer);
@@ -331,7 +317,6 @@ public class ParamMutatorConfigPanel extends JPanel {
         header.addColumnGroup(gOptions);
         header.addColumnGroup(gEnc);
 
-        // Let the UI compute the correct multi-row header height.
         header.revalidate();
         header.repaint();
     }
@@ -340,16 +325,16 @@ public class ParamMutatorConfigPanel extends JPanel {
 
     private static final class RuleRow {
         String paramPattern = "";
-        boolean paramRegex = false;
+        ParamMutatorRule.ParamPatternType paramType = ParamMutatorRule.ParamPatternType.NORMAL;
 
         boolean pathEnabled = false;
         String pathPattern = "";
         boolean pathRegex = false;
 
         MutationMode mode = MutationMode.RANDOM;
-        RandomType randType = RandomType.values().length > 0 ? RandomType.values()[0] : null;
+        RandomType randType = RandomType.NUMERIC;
         String text = "change_me";
-        Position position = Position.values().length > 0 ? Position.values()[0] : null;
+        Position position = Position.PREFIX;
         int length = 4;
 
         CodecOp dec1 = CodecOp.NO_OP;
@@ -392,23 +377,30 @@ public class ParamMutatorConfigPanel extends JPanel {
             RuleRow r = rows.get(rowIndex);
             Col c = Col.values()[columnIndex];
 
-            // Always editable:
-            if (c == Col.PARAM_PATTERN || c == Col.PARAM_REGEX || c == Col.MODE || c == Col.POS) return true;
+            if (c == Col.PARAM_PATTERN || c == Col.PARAM_TYPE || c == Col.MODE) return true;
 
-            // Path fields editable only if pathEnabled
             if (c == Col.PATH_ENABLED) return true;
             if (c == Col.PATH_PATTERN || c == Col.PATH_REGEX) return r.pathEnabled;
 
-            // Mode dependent:
             if (c == Col.TYPE) return r.mode == MutationMode.RANDOM;
             if (c == Col.LEN) {
-                // Length editable only for RANDOM mode and non-UUID types
                 return r.mode == MutationMode.RANDOM && r.randType != RandomType.UUID;
             }
             if (c == Col.TEXT) return r.mode == MutationMode.STRING;
 
-            // Encoding always editable
-            return c.ordinal() >= Col.DEC1.ordinal();
+            if (c == Col.POS) return r.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+
+            // decoding should be disabled for user_def
+            if (c == Col.DEC1 || c == Col.DEC2 || c == Col.DEC3 || c == Col.DEC4) {
+                return r.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+            }
+
+            // encoding always editable
+            if (c == Col.ENC1 || c == Col.ENC2 || c == Col.ENC3 || c == Col.ENC4) {
+                return true;
+            }
+
+            return false;
         }
 
         @Override
@@ -417,7 +409,7 @@ public class ParamMutatorConfigPanel extends JPanel {
             Col c = Col.values()[columnIndex];
             return switch (c) {
                 case PARAM_PATTERN -> r.paramPattern;
-                case PARAM_REGEX -> r.paramRegex;
+                case PARAM_TYPE -> r.paramType;
 
                 case PATH_ENABLED -> r.pathEnabled;
                 case PATH_PATTERN -> r.pathPattern;
@@ -449,7 +441,7 @@ public class ParamMutatorConfigPanel extends JPanel {
             try {
                 switch (c) {
                     case PARAM_PATTERN -> r.paramPattern = aValue == null ? "" : aValue.toString();
-                    case PARAM_REGEX -> r.paramRegex = aValue instanceof Boolean && (Boolean) aValue;
+                    case PARAM_TYPE -> r.paramType = (ParamMutatorRule.ParamPatternType) aValue;
 
                     case PATH_ENABLED -> r.pathEnabled = aValue instanceof Boolean && (Boolean) aValue;
                     case PATH_PATTERN -> r.pathPattern = aValue == null ? "" : aValue.toString();
@@ -463,8 +455,9 @@ public class ParamMutatorConfigPanel extends JPanel {
                     case TEXT -> r.text = aValue == null ? "" : aValue.toString();
                     case POS -> r.position = (Position) aValue;
                     case LEN -> {
-                        if (aValue instanceof Integer) r.length = (Integer) aValue;
-                        else {
+                        if (aValue instanceof Integer) {
+                            r.length = (Integer) aValue;
+                        } else {
                             String s = aValue == null ? "" : aValue.toString().trim();
                             r.length = s.isEmpty() ? 4 : Integer.parseInt(s);
                         }
@@ -481,7 +474,7 @@ public class ParamMutatorConfigPanel extends JPanel {
                     case ENC4 -> r.enc4 = (CodecOp) aValue;
                 }
             } catch (Exception ex) {
-                // ignore parse errors; keep previous value
+                // ignore
             }
 
             fireTableRowsUpdated(rowIndex, rowIndex);
@@ -508,6 +501,12 @@ public class ParamMutatorConfigPanel extends JPanel {
                 enabled = rr.mode == MutationMode.RANDOM && rr.randType != RandomType.UUID;
             }
             if (colEnum == Col.TEXT) enabled = rr.mode == MutationMode.STRING;
+            if (colEnum == Col.POS) enabled = rr.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+
+            // gray out decode for user_def
+            if (colEnum == Col.DEC1 || colEnum == Col.DEC2 || colEnum == Col.DEC3 || colEnum == Col.DEC4) {
+                enabled = rr.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+            }
 
             c.setEnabled(enabled);
             return c;
@@ -538,8 +537,7 @@ public class ParamMutatorConfigPanel extends JPanel {
         }
     }
 
-    // -------------------- Grouped JTable header (classic implementation) --------------------
-    // Based on the well-known Nobuo Tamemasa "GroupableTableHeader" approach.
+    // -------------------- Grouped header (unchanged from your base) --------------------
 
     public static class ColumnGroup {
         protected TableCellRenderer renderer;
@@ -707,7 +705,6 @@ public class ParamMutatorConfigPanel extends JPanel {
                     }
                 }
 
-                // include the column margin so group widths/positions align with columns
                 cellRect.width = aColumn.getWidth() + columnMargin;
 
                 if (cellRect.intersects(clipBounds)) {
@@ -750,7 +747,6 @@ public class ParamMutatorConfigPanel extends JPanel {
 
             for (int column = 0; column < columnModel.getColumnCount(); column++) {
                 TableColumn aColumn = columnModel.getColumn(column);
-
                 TableCellRenderer renderer = aColumn.getHeaderRenderer();
                 if (renderer == null) renderer = header.getDefaultRenderer();
 
@@ -791,5 +787,4 @@ public class ParamMutatorConfigPanel extends JPanel {
             return createHeaderSize(width);
         }
     }
-
 }
