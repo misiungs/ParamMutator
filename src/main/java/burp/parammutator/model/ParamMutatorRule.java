@@ -12,9 +12,9 @@ public final class ParamMutatorRule {
     //
     // NEW: replace boolean regex with a type enum
     public enum ParamPatternType {
+        SUBSTITUTE,
         NORMAL,
-        REGEX,
-        SUBSTITUTE  // previously USER_DEF
+        REGEX
     }
 
     // internal name: 'mode' (alias of previous paramType)

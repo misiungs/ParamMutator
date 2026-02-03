@@ -310,3 +310,46 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                         logger.log(LogLevel.DEBUG, origin, reqPath, "withUpdatedParameters (user-def) failed: " + exParams);
                     }
                 }
+            } catch (Exception ex) {
+                logger.log(LogLevel.DEBUG, origin, reqPath,
+                        "Failed to apply in-place updates from mutated full message, falling back to parameter-mutated request: " + ex);
+                // keep mutatedRequest as the one built from parameters to avoid blocking/silently failing
+            }
+        }
+
+        // Final minimal debug: log substituted body once when DEBUG enabled
+        if (logger.getLogLevel() == LogLevel.DEBUG) {
+            try {
+                String finalReqStr = mutatedRequest.toString();
+                int sepIdx = finalReqStr.indexOf("\r\n\r\n");
+                String finalBody = sepIdx >= 0 ? finalReqStr.substring(Math.min(finalReqStr.length(), sepIdx + 4)) : "";
+                logger.log(LogLevel.DEBUG, origin, reqPath, finalBody);
+            } catch (Exception ignore) {
+                // ignore
+            }
+        }
+
+        // Return mutated request
+        return RequestToBeSentAction.continueWith(mutatedRequest, annotations);
+    }
+
+    @Override
+    public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
+        return ResponseReceivedAction.continueWith(responseReceived);
+    }
+
+    private String buildOrigin(HttpService service) {
+        String scheme = service.secure() ? "https" : "http";
+        String host = service.host();
+        int port = service.port();
+
+        boolean isStandard =
+                (!service.secure() && port == 80) ||
+                        (service.secure() && port == 443);
+
+        if (isStandard || port <= 0) {
+            return scheme + "://" + host;
+        }
+        return scheme + "://" + host + ":" + port;
+    }
+}

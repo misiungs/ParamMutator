@@ -153,7 +153,7 @@ public class ParamMutatorConfigPanel extends JPanel {
     private enum Col {
         PARAM_PATTERN("Parameter", String.class),
         // changed from Boolean "Is regex?" to enum Type
-        PARAM_TYPE("Type", ParamMutatorRule.ParamPatternType.class),
+        PARAM_TYPE("Mode", ParamMutatorRule.ParamPatternType.class),
 
         PATH_ENABLED("On?", Boolean.class),
         PATH_PATTERN("Path", String.class),
@@ -388,11 +388,11 @@ public class ParamMutatorConfigPanel extends JPanel {
             }
             if (c == Col.TEXT) return r.mode == MutationMode.STRING;
 
-            if (c == Col.POS) return r.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+            if (c == Col.POS) return r.paramType != ParamMutatorRule.ParamPatternType.SUBSTITUTE;
 
             // decoding should be disabled for user_def
             if (c == Col.DEC1 || c == Col.DEC2 || c == Col.DEC3 || c == Col.DEC4) {
-                return r.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+                return r.paramType != ParamMutatorRule.ParamPatternType.SUBSTITUTE;
             }
 
             // encoding always editable
@@ -501,11 +501,11 @@ public class ParamMutatorConfigPanel extends JPanel {
                 enabled = rr.mode == MutationMode.RANDOM && rr.randType != RandomType.UUID;
             }
             if (colEnum == Col.TEXT) enabled = rr.mode == MutationMode.STRING;
-            if (colEnum == Col.POS) enabled = rr.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+            if (colEnum == Col.POS) enabled = rr.paramType != ParamMutatorRule.ParamPatternType.SUBSTITUTE;
 
             // gray out decode for user_def
             if (colEnum == Col.DEC1 || colEnum == Col.DEC2 || colEnum == Col.DEC3 || colEnum == Col.DEC4) {
-                enabled = rr.paramType != ParamMutatorRule.ParamPatternType.USER_DEF;
+                enabled = rr.paramType != ParamMutatorRule.ParamPatternType.SUBSTITUTE;
             }
 
             c.setEnabled(enabled);
