@@ -14,10 +14,11 @@ public final class ParamMutatorRule {
     public enum ParamPatternType {
         NORMAL,
         REGEX,
-        USER_DEF
+        SUBSTITUTE  // previously USER_DEF
     }
 
-    private ParamPatternType paramType;
+    // internal name: 'mode' (alias of previous paramType)
+    private ParamPatternType mode;
 
     private boolean pathEnabled;
     private String pathPattern;
@@ -95,7 +96,7 @@ public final class ParamMutatorRule {
                             String pathPattern,
                             boolean pathRegex) {
         this.pattern = pattern;
-        this.paramType = paramType == null ? ParamPatternType.NORMAL : paramType;
+        this.mode = paramType == null ? ParamPatternType.NORMAL : paramType;
 
         this.mutationMode = mutationMode == null ? MutationMode.RANDOM : mutationMode;
         this.type = type;
@@ -116,7 +117,7 @@ public final class ParamMutatorRule {
 
     // helper used by legacy constructors
     private void compilePattern() {
-        if (paramType == ParamPatternType.REGEX && pattern != null && !pattern.isEmpty()) {
+        if (mode == ParamPatternType.REGEX && pattern != null && !pattern.isEmpty()) {
             compiledPattern = Pattern.compile(pattern);
         } else {
             compiledPattern = null;
@@ -135,7 +136,7 @@ public final class ParamMutatorRule {
         String name = paramName == null ? "" : paramName;
         String pat = pattern == null ? "" : pattern;
 
-        return switch (paramType) {
+        return switch (mode) {
             case REGEX -> {
                 if (compiledPattern == null && !pat.isEmpty()) {
                     compilePattern();
@@ -143,8 +144,8 @@ public final class ParamMutatorRule {
                 yield compiledPattern != null && compiledPattern.matcher(name).matches();
             }
             case NORMAL -> name.equals(pat);
-            case USER_DEF -> {
-                // USER_DEF rules are matched by placeholder replacement, not by parameter list
+            case SUBSTITUTE -> {
+                // SUBSTITUTE rules are matched by placeholder replacement, not by parameter list
                 yield false;
             }
         };
@@ -177,13 +178,24 @@ public final class ParamMutatorRule {
     }
 
     // NEW getter / setter
+    // legacy-compatible accessor (keeps older API)
     public ParamPatternType getParamType() {
-        return paramType == null ? ParamPatternType.NORMAL : paramType;
+        return mode == null ? ParamPatternType.NORMAL : mode;
     }
 
-    public void setParamType(ParamPatternType paramType) {
-        this.paramType = paramType == null ? ParamPatternType.NORMAL : paramType;
+    // new preferred names
+    public ParamPatternType getMode() {
+        return mode == null ? ParamPatternType.NORMAL : mode;
+    }
+
+    public void setMode(ParamPatternType m) {
+        this.mode = m == null ? ParamPatternType.NORMAL : m;
         compilePattern();
+    }
+
+    // legacy-compatible setter
+    public void setParamType(ParamPatternType paramType) {
+        setMode(paramType);
     }
 
     // legacy compatibility for UI/table code that still calls isRegex()

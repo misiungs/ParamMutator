@@ -72,7 +72,7 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                     continue;
                 }
                 // skip user_def rules here – they are handled on full request
-                if (rule.getParamType() == ParamMutatorRule.ParamPatternType.USER_DEF) {
+                if (rule.getParamType() == ParamMutatorRule.ParamPatternType.SUBSTITUTE) {
                     continue;
                 }
                 if (!rule.matches(name)) {
@@ -132,7 +132,7 @@ public class ParamMutatorHttpHandler implements HttpHandler {
             // find matching user_def rule with matching path (matchesPath already enforces path filter)
             ParamMutatorRule matchingRule = null;
             for (ParamMutatorRule rule : cfg.getRules()) {
-                if (rule.getParamType() != ParamMutatorRule.ParamPatternType.USER_DEF) {
+                if (rule.getParamType() != ParamMutatorRule.ParamPatternType.SUBSTITUTE) {
                     continue;
                 }
                 if (!rule.matchesPath(reqPath)) {
@@ -153,7 +153,7 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                     // collect available user-def patterns for debugging
                     StringBuilder available = new StringBuilder();
                     for (ParamMutatorRule r : cfg.getRules()) {
-                        if (r.getParamType() == ParamMutatorRule.ParamPatternType.USER_DEF && r.matchesPath(reqPath)) {
+                        if (r.getParamType() == ParamMutatorRule.ParamPatternType.SUBSTITUTE && r.matchesPath(reqPath)) {
                             if (available.length() > 0) available.append(", ");
                             available.append("'").append(r.getPattern()).append("'");
                         }

@@ -15,9 +15,24 @@ public final class ExtensionConfig {
 
     public ExtensionConfig(List<ParamMutatorRule> rules,
                            boolean httpEnabled) {
-        this.rules = new ArrayList<>(rules);
-        this.httpEnabled = httpEnabled;
-    }
+        // ensure "user_def" (substitute) rules are placed first in the internal list
+        this.rules = new ArrayList<>();
+        if (rules != null) {
+            // first add USER_DEF rules (preserve their relative order)
+            for (ParamMutatorRule r : rules) {
+                if (r != null && r.getParamType() == ParamMutatorRule.ParamPatternType.SUBSTITUTE) {
+                    this.rules.add(r);
+                }
+            }
+            // then add all other rules (preserve their relative order)
+            for (ParamMutatorRule r : rules) {
+                if (r != null && r.getParamType() != ParamMutatorRule.ParamPatternType.SUBSTITUTE) {
+                     this.rules.add(r);
+                 }
+             }
+         }
+         this.httpEnabled = httpEnabled;
+     }
 
     public boolean isHttpEnabled() {
         return httpEnabled;
