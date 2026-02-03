@@ -1,6 +1,6 @@
 # Param Mutator
 
-Param Mutator is a Burp Suite extension that applies configurable mutations to HTTP request parameters before they are sent, with flexible path-based scoping, encoding/decoding chains, and integrated logging.
+Param Mutator is a Burp Suite extension that applies configurable mutations to HTTP request parameters before they are sent. It supports flexible path-based scoping, encoding/decoding chains, and integrated logging.
 
 ## Overview
 
@@ -8,17 +8,28 @@ Param Mutator lets you define per-parameter rules that automatically modify requ
 
 ## Features
 
-- **Rule-based mutations**: Configure up to 100 rules, each targeting parameters by exact name or regular expression.  
-- Path-aware scoping: Optionally restrict rules to specific request paths, with literal or regex path matching.  
-- Random and fixed payloads: Choose between random strings (numeric, alpha, alphanumeric) of configurable length or fixed text payloads.  
-- Flexible position: Insert payloads as prefix or suffix of the decoded parameter value.  
-- Codec chains: Apply ordered decode and encode chains per rule, supporting URL, Base64, and Unicode transformations.  
-- Integrated logging: View mutations in a dedicated Log tab, with adjustable log level, size limit, table sorting, and CSV export.  
-- Runtime toggle: Enable or disable HTTP handling globally from the UI without unloading the extension.
+- Rule-based mutations: configure rules that target parameters by exact name, regex, or substitute placeholders.  
+- Substitute rules: define named placeholders (e.g. `{$token$}`) and a rule that provides the replacement value (fixed or random). The same placeholder can appear multiple times in one request and will be replaced consistently.
+- Mode: choose RANDOM (with alphabet type and length) or STRING (fixed text) for each rule.
+- Path-aware scoping: restrict rules to specific request paths (literal or regex).
+- In-place updates: the extension uses Montoya's withPath/withHeader/withBody/withUpdatedParameters methods to perform safe, metadata-preserving updates to requests.
+- Codec chains: apply ordered decode and encode chains per rule (URL, Base64, Unicode, etc.).
+- Integrated logging: view mutations in the Log tab. Log level controls whether full parameter dumps or only mutated parameters are stored.
+- Runtime toggle: enable or disable HTTP handling from the UI without unloading the extension.
 
-## How it works
+## How it works (brief)
 
-The extension registers an HTTP handler that inspects each outgoing request when HTTP processing is enabled. For every parameter, it finds matching rules (parameter pattern and optional path filters), decodes the value using the configured decode chain, applies the mutation (random or fixed string, prefix or suffix), then re-encodes the result with the encode chain and updates the request before it is sent. Logging captures either all parameter values or only the mutated ones, depending on the selected log level.
+When enabled, the extension:
+1. Applies normal/regex parameter rules against parsed parameters.
+2. Scans the full request text for substitute placeholders ({$name$}).
+3. Generates or reuses replacement values for matching Substitute rules.
+4. Applies replacements in-place:
+   - Updates the request path (withPath) if placeholders appear in the request line.
+   - Updates headers (withHeader) if placeholders appear in header names/values.
+   - Updates the body (withBody) when placeholders appear in the body.
+   - Updates parsed URL/query parameters (withUpdatedParameters) to reflect substitutions in parameter names or values.
+5. Adjusts Content-Length if the body size changed (unless chunked).
+6. Returns the updated HttpRequest object to Montoya, preserving internal metadata so Burp will send the request normally.
 
 ## Building
 
@@ -39,14 +50,17 @@ The compiled JAR is available under Releases.
 
 1. Load the JAR into Burp Suite via the Extender tab (Extensions → Add → Select JAR).  
 2. Open the "Param Mutator" tab and configure rules in the **Configuration** view.  
-   - Set the number of visible rules.  
-   - For each rule, define:  
-     - Parameter pattern and "Is regex?" flag.  
-     - Optional path filter (enabled flag, path pattern, and "Is regex?" for the path).  
-     - Mode: RANDOM (with type and length) or STRING (with custom text).  
-     - Position: PREFIX or SUFFIX.  
-     - Decode and encode chains (Dec1–Dec4, Enc1–Enc4).  
-3. Toggle "Enable Param Mutator" to start mutating outgoing HTTP requests.  
-4. Use the **Log** tab to:  
-   - Switch between FULL (all parameters) and INFO (only mutated parameters) logging.  
-   - Adjust maximum log size in MB, clear logs, and export them to CSV for detailed analysis.  
+   - For each rule, define:
+     - Parameter pattern and "Is regex?" flag (or select Substitute mode and use a placeholder name).
+     - Optional path filter (enabled flag, path pattern, and "Is regex?" for the path).
+     - Mode: RANDOM (with alphabet/type and length) or STRING (with custom text).
+     - Position: PREFIX or SUFFIX (applies when inserting into decoded values).
+     - Decode and encode chains (Dec1–Dec4, Enc1–Enc4).
+3. Use placeholders in requests: put `{$name$}` in path, headers, query, or body; configure a Substitute rule named `name` to control the replacement value.
+4. Toggle "Enable Param Mutator" to start mutating outgoing HTTP requests.  
+5. Check the **Log** tab to review substitutions and mutated parameters.
+
+## Notes and troubleshooting
+
+- Prefer Substitute rules for placeholders used across multiple locations in the same request — replacements are consistent per-request.
+- If a request is not being sent after mutation, enable DEBUG logs and verify the extension updates the request in-place (Content-Length, headers, and body will be shown in the extension log).
