@@ -58,6 +58,15 @@ public class ParamMutatorHttpHandler implements HttpHandler {
 
         Map<String, String> allParamValues = new HashMap<>();
         Map<String, String> changedParamValues = new HashMap<>();
+        Map<String, String> substitutedParams = new HashMap<>();
+
+        boolean hasSubstituteRules = false;
+        for (ParamMutatorRule rule : cfg.getRules()) {
+            if (rule.getParamType() == ParamMutatorRule.ParamPatternType.SUBSTITUTE) {
+                hasSubstituteRules = true;
+                break;
+            }
+        }
 
                 for (ParsedHttpParameter param : originalParams) {
             String name = param.name();
@@ -175,19 +184,8 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                 userDefReplacements.put(placeholderName, replacement);
             }
 
-            // log for DEBUG/INFO using unified structure (key: "{$name$}" -> replacement value)
-            changedParamValues.put(placeholderFull, replacement);
-            // Only add placeholder to allParamValues if it was an actual parsed parameter name
-            boolean placeholderWasParameter = false;
-            for (ParsedHttpParameter p : originalParams) {
-                if (placeholderFull.equals(p.name())) {
-                    placeholderWasParameter = true;
-                    break;
-                }
-            }
-            if (placeholderWasParameter) {
-                allParamValues.put(placeholderFull, replacement);
-            }
+            // Track substituted parameters
+            substitutedParams.put(placeholderName, replacement);
 
             // WARN if replacement contains CR/LF which can break request framing
             if (replacement.indexOf('\r') != -1 || replacement.indexOf('\n') != -1) {
@@ -216,12 +214,12 @@ public class ParamMutatorHttpHandler implements HttpHandler {
                 String bodyPart = fullMessage.substring(headerBodySepIndex + 4);
 
                 // don't modify if Transfer-Encoding: chunked is present
-                Pattern transferChunked = Pattern.compile("(?mi)^Transfer-Encoding:\\s*chunked\\s*$", Pattern.MULTILINE);
+                Pattern transferChunked = Pattern.compile("(?mi)^Transfer-Encoding:\s*chunked\s*$", Pattern.MULTILINE);
                 if (!transferChunked.matcher(headersPart).find()) {
                     byte[] bodyBytes = bodyPart.getBytes(StandardCharsets.ISO_8859_1);
 
                     // replace existing Content-Length header if present
-                    Pattern clPattern = Pattern.compile("(?mi)^(Content-Length:\\s*)(\\d+)\\s*$", Pattern.MULTILINE);
+                    Pattern clPattern = Pattern.compile("(?mi)^(Content-Length:\s*)(\\d+)\s*$", Pattern.MULTILINE);
                     Matcher clMatcher = clPattern.matcher(headersPart);
                     if (clMatcher.find()) {
                         String prefix = clMatcher.group(1);
@@ -317,20 +315,84 @@ public class ParamMutatorHttpHandler implements HttpHandler {
             }
         }
 
-        // Final minimal debug: log substituted body once when DEBUG enabled
-        if (logger.getLogLevel() == LogLevel.DEBUG) {
-            try {
-                String finalReqStr = mutatedRequest.toString();
-                int sepIdx = finalReqStr.indexOf("\r\n\r\n");
-                String finalBody = sepIdx >= 0 ? finalReqStr.substring(Math.min(finalReqStr.length(), sepIdx + 4)) : "";
-                logger.log(LogLevel.DEBUG, origin, reqPath, finalBody);
-            } catch (Exception ignore) {
-                // ignore
+        // Logging based on mode and log level
+        try {
+            String jsonLog = buildLogJson(allParamValues, changedParamValues, substitutedParams, hasSubstituteRules);
+            if (jsonLog != null && !jsonLog.isEmpty()) {
+                logger.log(logger.getLogLevel(), origin, reqPath, jsonLog);
             }
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, origin, reqPath, "Exception building JSON log: " + ex);
         }
 
         // Return mutated request
         return RequestToBeSentAction.continueWith(mutatedRequest, annotations);
+    }
+
+    private String buildLogJson(Map<String, String> allParams, Map<String, String> changedParams, 
+                                  Map<String, String> substitutedParams, boolean hasSubstituteRules) {
+        LogLevel currentLevel = logger.getLogLevel();
+        
+        Map<String, String> logData = new HashMap<>();
+        
+        if (hasSubstituteRules) {
+            // Substitute mode logging
+            if (currentLevel == LogLevel.DEBUG) {
+                // DEBUG: log all parameters + substituted parameters
+                logData.putAll(allParams);
+                logData.putAll(substitutedParams);
+            } else {
+                // INFO: log only substituted parameters
+                logData.putAll(substitutedParams);
+            }
+        } else {
+            // Normal/Regex mode logging
+            if (currentLevel == LogLevel.DEBUG) {
+                // DEBUG: log all parameters
+                logData.putAll(allParams);
+            } else {
+                // INFO: log only mutated parameters
+                logData.putAll(changedParams);
+            }
+        }
+        
+        if (logData.isEmpty()) {
+            return null;
+        }
+        
+        return mapToJson(logData);
+    }
+
+    private String mapToJson(Map<String, String> map) {
+        if (map == null || map.isEmpty()) {
+            return "{}";
+        }
+        
+        StringBuilder json = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            if (!first) {
+                json.append(",");
+            }
+            first = false;
+            json.append("\"").append(escapeJson(entry.getKey())).append("\":");
+            json.append("\"").append(escapeJson(entry.getValue())).append("\"");
+        }
+        json.append("}");
+        return json.toString();
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     @Override
