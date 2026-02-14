@@ -1,5 +1,6 @@
 package burp.parammutator.ui;
 
+import burp.api.montoya.MontoyaApi;
 import burp.parammutator.log.Logger;
 import burp.parammutator.log.LogLevel;
 
@@ -12,8 +13,10 @@ import java.io.IOException;
 
 public class LogPanel extends JPanel {
     private final Logger logger = Logger.getInstance();
+    private final MontoyaApi api;
 
-    public LogPanel() {
+    public LogPanel(MontoyaApi api) {
+        this.api = api;
         setLayout(new BorderLayout());
         JTable table = new JTable(logger);
         table.setFillsViewportHeight(true);
@@ -60,10 +63,16 @@ public class LogPanel extends JPanel {
                 if (mb > 0) {
                     logger.setMaxSizeBytes(mb * 1024L * 1024L);
                 } else {
-                    JOptionPane.showMessageDialog(this, "Max size must be positive integer (MB)");
+                    JOptionPane.showMessageDialog(
+                        api.userInterface().swingUtils().suiteFrame(),
+                        "Max size must be positive integer (MB)"
+                    );
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid number format for max size");
+                JOptionPane.showMessageDialog(
+                    api.userInterface().swingUtils().suiteFrame(),
+                    "Invalid number format for max size"
+                );
             }
         });
 
@@ -71,7 +80,7 @@ public class LogPanel extends JPanel {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Save Logs as CSV");
             fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-            int userSelection = fileChooser.showSaveDialog(this);
+            int userSelection = fileChooser.showSaveDialog(api.userInterface().swingUtils().suiteFrame());
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 String filePath = fileChooser.getSelectedFile().getAbsolutePath();
                 if (!filePath.toLowerCase().endsWith(".csv")) {
@@ -92,9 +101,15 @@ public class LogPanel extends JPanel {
                         }
                         csvWriter.append('\n');
                     }
-                    JOptionPane.showMessageDialog(this, "Logs saved to CSV successfully.");
+                    JOptionPane.showMessageDialog(
+                        api.userInterface().swingUtils().suiteFrame(),
+                        "Logs saved to CSV successfully."
+                    );
                 } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(this, "Error saving CSV: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(
+                        api.userInterface().swingUtils().suiteFrame(),
+                        "Error saving CSV: " + ex.getMessage()
+                    );
                 }
             }
         });

@@ -23,11 +23,14 @@ public class ParamMutatorExtension implements BurpExtension {
         this.api = api;
         api.extension().setName("Param Mutator");
 
+        // Register unload handler
+        api.extension().registerUnloadingHandler(this::onUnload);
+
         JPanel mainPanel = new JPanel(new BorderLayout());
         JTabbedPane mainTabs = new JTabbedPane();
 
         ParamMutatorConfigPanel configPanel = new ParamMutatorConfigPanel(this::onConfigChanged);
-        LogPanel logPanel = new LogPanel();
+        LogPanel logPanel = new LogPanel(api);
 
         mainTabs.addTab("Configuration", configPanel);
         mainTabs.addTab("Log", logPanel);
@@ -54,6 +57,18 @@ public class ParamMutatorExtension implements BurpExtension {
             httpRegistration = api.http().registerHttpHandler(
                 new ParamMutatorHttpHandler(configRef)
             );
+        }
+    }
+
+    private void onUnload() {
+        // Clean up HTTP handler registration
+        try {
+            if (httpRegistration != null) {
+                httpRegistration.deregister();
+                httpRegistration = null;
+            }
+        } catch (Exception e) {
+            api.logging().logToError("Error during unload: " + e.getMessage());
         }
     }
 }
