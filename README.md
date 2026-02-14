@@ -65,8 +65,3 @@ The compiled JAR is available under Releases.
 Watch this tutorial to learn how to use the Param Mutator extension:
 
 [![Param Mutator Tutorial](https://img.youtube.com/vi/deF-g6HTBTM/0.jpg)](https://www.youtube.com/watch?v=deF-g6HTBTM)
-
-## Notes and troubleshooting
-
-- Prefer Substitute rules for placeholders used across multiple locations in the same request — replacements are consistent per-request.
-- If a request is not being sent after mutation, enable DEBUG logs and verify the extension updates the request in-place (Content-Length, headers, and body will be shown in the extension log).
