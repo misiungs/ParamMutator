@@ -48,17 +48,18 @@ The compiled JAR is available under Releases.
 
 ## Usage
 
-1. Load the JAR into Burp Suite via the Extender tab (Extensions → Add → Select JAR).  
-2. Open the "Param Mutator" tab and configure rules in the **Configuration** view.  
-   - For each rule, define:
-     - Parameter pattern and "Is regex?" flag (or select Substitute mode and use a placeholder name).
+1. Load the JAR into Burp Suite via the Extender tab (Extensions → Add → Select JAR).  
+2. Open the "Param Mutator" tab and configure rules in the "Configuration" view.  
+   - For each rule, define:
+     - Parameter pattern (one of three modes - Normal, Regex, and Subsitute).
+     - Normal and Regex mode search for parameters based on their names.
      - Optional path filter (enabled flag, path pattern, and "Is regex?" for the path).
-     - Mode: RANDOM (with alphabet/type and length) or STRING (with custom text).
-     - Position: PREFIX or SUFFIX (applies when inserting into decoded values).
-     - Decode and encode chains (Dec1–Dec4, Enc1–Enc4).
-3. Use placeholders in requests: put `{$name$}` in path, headers, query, or body; configure a Substitute rule named `name` to control the replacement value.
-4. Toggle "Enable Param Mutator" to start mutating outgoing HTTP requests.  
-5. Check the **Log** tab to review substitutions and mutated parameters.
+     - Mode: RANDOM (with alphabet/type and length) or STRING (with constant text).
+     - Position: PREFIX or SUFFIX (applies when inserting into decoded values).
+     - Decode and encode chains (Dec1–Dec4, Enc1–Enc4).
+3. If substitution mode is used, use placeholders in requests: put `{$name$}` in path, headers, query, or body; for configured Substitute rule named "name" to control the replacement value.
+4. Toggle "Enable Param Mutator" to start mutating outgoing HTTP requests.  
+5. Check the "Log" tab to review substitutions and mutated parameters.
 
 ## Video Tutorial
 
