@@ -1,10 +1,10 @@
 # Param Mutator
 
-Param Mutator is a Burp Suite extension that applies configurable mutations to HTTP request parameters before they are sent. It supports flexible path-based scoping, encoding/decoding chains, and integrated logging.
+Param Mutator is a Burp Suite extension that applies configurable mutations to HTTP request parameters before they are sent. It supports flexible path-based scoping, encoding/decoding chains, and integrated logging. It is useful for testing (both manual and scanning) of endpoints that require some parameters to be unique, allowing automated scans to proceed without being rejected due to duplicate parameter values.
 
 ## Overview
 
-Param Mutator lets you define per-parameter rules that automatically modify request parameters as traffic flows through Burp. Rules can be scoped by request path, use either random or fixed string payloads, and support chained codecs such as URL, Base64, and Unicode encode/decode.
+Param Mutator lets you define per-parameter rules that automatically modify request parameters as traffic flows through Burp. Rules can be scoped by request path, use either random or fixed string payloads, and support chained codecs such as URL, Base64, and Unicode encode/decode. This is particularly valuable when testing endpoints that require unique parameters, such as email addresses, usernames, transaction IDs, or nonce values — the extension ensures automatic scanning tools can test these endpoints without requests being rejected for using duplicate values.
 
 ## Features
 
@@ -59,6 +59,12 @@ The compiled JAR is available under Releases.
 3. Use placeholders in requests: put `{$name$}` in path, headers, query, or body; configure a Substitute rule named `name` to control the replacement value.
 4. Toggle "Enable Param Mutator" to start mutating outgoing HTTP requests.  
 5. Check the **Log** tab to review substitutions and mutated parameters.
+
+## Video Tutorial
+
+Watch this tutorial to learn how to use the Param Mutator extension:
+
+[![Param Mutator Tutorial](https://img.youtube.com/vi/deF-g6HTBTM/0.jpg)](https://www.youtube.com/watch?v=deF-g6HTBTM)
 
 ## Notes and troubleshooting
 
